@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8 STROKE — Rally Card Game</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
+body {
+  background: linear-gradient(135deg, #0f4d2c, #1a7a4a);
+  min-height: 100vh; padding: 12px; color:#fff; overflow-x:hidden;
+}
+h1 { text-align:center; font-size: 1.7rem; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); }
+h1 span { color: #ffd700; }
+
+.page { display:none; max-width: 600px; margin:0 auto; }
+.page.active { display:block; }
+
+/* === HALAMAN 1 — LOBBY === */
+.rules-box {
+  background: rgba(0,0,0,0.35); border-radius: 12px; padding: 15px; margin-bottom: 20px;
+  border: 2px solid rgba(255,215,0,0.3);
+}
+.rules-box h2 { color:#ffd700; text-align:center; margin-bottom: 12px; font-size: 1.15rem; }
+.rules-box p { margin: 8px 0; font-size: 0.85rem; line-height: 1.5; }
+.rules-box strong { color:#ffd700; }
+
+.players-box {
+  background: rgba(0,0,0,0.35); border-radius: 12px; padding: 15px; margin-bottom: 20px;
+  border: 2px solid rgba(255,215,0,0.3);
+}
+.players-box h2 { color:#ffd700; text-align:center; margin-bottom: 12px; font-size: 1.15rem; }
+.player-list { list-style:none; }
+.player-list li {
+  padding: 10px 12px; margin: 6px 0; border-radius: 8px;
+  background: rgba(255,255,255,0.1); display:flex;
+  justify-content:space-between; align-items:center;
+}
+.player-list li.ai { border-left: 3px solid #9b59b6; }
+.player-list li.human { border-left: 3px solid #ffd700; }
+.ai-badge { font-size: 0.65rem; background:rgba(155,89,182,0.5); padding:2px 6px; border-radius:4px; }
+.remove-btn { background:none; border:none; color:#ff6666; cursor:pointer; font-size:1rem; padding:0 4px; }
+
+.main-buttons { display:flex; flex-direction:column; gap:10px; }
+.main-buttons button {
+  padding: 13px 20px; font-size: 1rem; font-weight:bold; border:none; border-radius: 10px;
+  cursor:pointer; transition: 0.2s;
+}
+.main-buttons button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+#addPlayerBtn { background: #f39c12; color:#fff; }
+#goPlayBtn { background: #ffd700; color:#000; font-size: 1.15rem; padding: 15px 25px; }
+button:hover:not(:disabled) { transform: scale(1.03); }
+
+/* === HALAMAN 2 — GAME === */
+.top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:6px; }
+.top-bar button { padding:7px 10px; border-radius:8px; border:none; cursor:pointer; font-size:0.85rem; }
+#backBtn { background: #e74c3c; color:#fff; }
+#soundBtn { background: #16a085; color:#fff; }
+#restartBtn { background: #3498db; color:#fff; }
+
+.turn-info {
+  text-align:center; font-size: 0.95rem; font-weight:bold; margin: 8px 0;
+  color:#ffd700; padding:6px; background:rgba(0,0,0,0.25); border-radius:8px;
+}
+
+.main-wrap { display: flex; flex-wrap: wrap; gap: 10px; max-width: 1000px; margin: 0 auto; }
+.left-col { flex: 1; min-width: 280px; }
+.right-col { width: 220px; flex-shrink: 0; }
+
+.scoreboard {
+  background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; position: sticky; top: 8px;
+}
+.scoreboard h3 { text-align:center; margin-bottom: 8px; color:#ffd700; font-size: 0.95rem; }
+.score-row {
+  padding: 7px; margin: 5px 0; border-radius: 7px; background: rgba(255,255,255,0.1);
+  display:flex; align-items:center; justify-content:space-between; font-size:0.9rem;
+}
+.score-row.leader { background: rgba(255,215,0,0.25); border: 1px solid #ffd700; }
+.score-row.human { border-left: 3px solid #ffd700; }
+.score-val { font-weight: bold; color:#ffd700; }
+.score-streak {
+  font-size: 0.65rem; padding: 1px 4px; border-radius: 4px;
+  background: rgba(255,255,0,0.3);
+}
+.score-streak.warn { background: rgba(255,100,0,0.5); animation: blink 0.8s infinite alternate; }
+.score-streak.danger { background: rgba(255,0,0,0.6); animation: blink 0.5s infinite alternate; }
+@keyframes blink { from{opacity:0.6;} to{opacity:1;} }
+
+.tsp-warning {
+  background: rgba(255, 100, 0, 0.4); border: 2px solid #ff6600; border-radius: 8px;
+  padding: 8px; margin: 8px 0; text-align:center; font-weight:bold; font-size:0.85rem;
+  animation: pulse 0.8s infinite alternate; display:none;
+}
+@keyframes pulse { from{box-shadow: 0 0 4px #ff6600;} to{box-shadow: 0 0 12px #ff6600;} }
+
+/* === AREA PILIH KARTU — DENGAN ANIMASI BUKA === */
+.bottom-section {
+  margin-top: 12px; display:flex; flex-direction:column; gap:10px; align-items:center;
+}
+.choose-card-area {
+  background: rgba(255,215,0,0.12); border: 2px solid #ffd700; border-radius: 10px;
+  padding: 12px 15px; display:none; width:100%; max-width: 420px;
+  animation: glow 1s infinite alternate;
+}
+@keyframes glow { from{box-shadow: 0 0 4px #ffd700;} to{box-shadow: 0 0 15px #ffd700;} }
+.choose-card-area h4 { color:#ffd700; margin-bottom: 10px; font-size: 0.9rem; text-align:center; }
+.choose-cards-wrap { display:flex; justify-content:center; gap: 12px; perspective: 600px; }
+
+/* KARTU PILIHAN — KONTAINER 3D */
+.card-choice {
+  width: 55px; height: 78px; position:relative; cursor:pointer;
+  transform-style: preserve-3d; transition: transform 0.6s ease;
+}
+.card-choice.flipped { transform: rotateY(180deg); }
+.card-choice:hover:not(.flipped) { transform: translateY(-5px) scale(1.08); }
+
+/* BELAKANG KARTU */
+.card-choice-back, .card-choice-front {
+  position:absolute; width:100%; height:100%; border-radius: 8px;
+  backface-visibility: hidden; display:flex; align-items:center; justify-content:center;
+}
+.card-choice-back {
+  background: linear-gradient(135deg, #1e5799, #2989d8);
+  border: 2px solid #ffd700; box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+  font-size: 1.4rem; color:#ffd700;
+}
+/* DEPAN KARTU — TERBUKA */
+.card-choice-front {
+  background: #fff; transform: rotateY(180deg);
+  border: 2px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  flex-direction:column; justify-content:space-between; padding:3px;
+}
+.card-choice-front.red { color: #d32f2f; }
+.card-choice-front.black { color: #212121; }
+.card-choice-front.joker {
+  background: linear-gradient(45deg, #ffd700, #ffed4e); color:#000; border-color:#ffd700;
+}
+.card-choice-front .top { font-weight:bold; font-size: 0.55rem; line-height:1; align-self:flex-start; }
+.card-choice-front .mid { font-size: 0.9rem; text-align:center; }
+.card-choice-front .bot { font-weight:bold; font-size: 0.55rem; line-height:1; align-self:flex-end; transform: rotate(180deg); }
+
+/* TANDA TERPILIH */
+.card-choice.selected .card-choice-back {
+  background: linear-gradient(135deg, #2ecc71, #27ae60); border-color: #fff;
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.6);
+}
+
+/* TOMBOL BAWAH */
+.bottom-buttons { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.bottom-buttons button {
+  padding: 11px 22px; font-size: 1rem; font-weight:bold; border:none; border-radius: 10px;
+  cursor:pointer; transition: 0.2s;
+}
+#stopBtn { background: #e74c3c; color:#fff; }
+button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+/* AREA KARTU PEMAIN */
+.player-area {
+  background: rgba(0,0,0,0.25); border-radius: 10px; padding: 10px; margin: 8px 0;
+}
+.player-area.human { border-left: 3px solid #ffd700; }
+.player-area.ai-area { border-left: 3px solid #9b59b6; }
+.player-area h3 { font-size: 0.9rem; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center; }
+.stopped-badge { color:#ffd700; font-size: 0.75rem; }
+
+.cards { display:flex; gap: 5px; flex-wrap:wrap; min-height: 50px; margin-top: 6px; }
+.card {
+  width: 40px; height: 58px; background: #fff; border-radius: 5px; box-shadow: 1px 2px 3px rgba(0,0,0,0.3);
+  padding: 2px; display:flex; flex-direction:column; justify-content:space-between;
+  transition: 0.3s ease; animation: cardFlip 0.45s ease-out;
+}
+@keyframes cardFlip {
+  0% { transform: perspective(400px) rotateY(90deg); opacity:0; }
+  100% { transform: perspective(400px) rotateY(0deg); opacity:1; }
+}
+.card.red { color: #d32f2f; }
+.card.black { color: #212121; }
+.card .top { font-weight:bold; font-size: 0.55rem; line-height:1; }
+.card .mid { font-size: 0.8rem; text-align:center; }
+.card .bot { font-weight:bold; font-size: 0.55rem; transform: rotate(180deg); line-height:1; }
+.card.joker { background: linear-gradient(45deg, #ffd700, #ffed4e); color:#000; }
+
+.result-banner {
+  text-align:center; padding: 15px; border-radius: 12px; margin: 12px 0; display:none;
+}
+.result-banner.win { background: linear-gradient(45deg, #ffd700, #ffed4e); color:#000; animation: bounce 0.6s ease infinite alternate; }
+.result-banner.lose { background: rgba(50,50,50,0.8); color:#ccc; border:2px solid #666; }
+@keyframes bounce { from{ transform:translateY(0); } to{ transform:translateY(-6px); } }
+
+.fireworks {
+  position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index: 5;
+}
+.particle {
+  position: absolute; border-radius: 50%; animation: explode 1.5s ease-out forwards;
+}
+@keyframes explode {
+  0% { transform: scale(0); opacity:1; }
+  50% { transform: scale(1.5); opacity:0.8; }
+  100% { transform: scale(0); opacity:0; }
+}
+
+/* MODAL NAMA */
+.name-modal {
+  position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85);
+  z-index: 100; display:none; align-items:center; justify-content:center; padding:15px;
+}
+.name-content {
+  background: #1a5c38; border-radius: 12px; padding: 20px; max-width: 320px; width:100%;
+  border: 2px solid #ffd700; text-align:center;
+}
+.name-content h3 { color:#ffd700; margin-bottom: 12px; font-size:1.1rem; }
+.name-content input {
+  width:100%; padding:10px; font-size:1rem; border-radius:8px; border:none;
+  margin-bottom:12px; text-align:center;
+}
+.name-btns { display:flex; gap:10px; justify-content:center; }
+.name-btns button { padding:9px 18px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.95rem; }
+.saveName { background:#2ecc71; color:#fff; }
+.cancelName { background:#e74c3c; color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- HALAMAN 1 — LOBBY -->
+<div class="page active" id="pageLobby">
+  <h1><span>♠♥</span> 8 STROKE <span>♦♣</span></h1>
+
+  <div class="rules-box">
+    <h2>📜 ATURAN PERMAINAN</h2>
+    <p><strong>Tujuan:</strong> Kumpulkan skor tertinggi dalam 8 ronde.</p>
+    <p><strong>Cara Main:</strong> Pilih 1 dari 3 kartu tertutup → kartu berputar terbuka jadi milikmu. AI ikut otomatis.</p>
+    <p><strong>Nilai Kartu:</strong><br>
+    A=14 | J=11 | Q=12 | K=13 | 2–10 = angka sendiri<br>
+    🃏 Joker = 15 poin</p>
+    <p><strong>Penalti per Ronde:</strong><br>
+    1:0 | 2:−2 | 3:−3 | 4:−4 | 5:−5 | 6:−6 | 7:−7 | 8:−8</p>
+    <p><strong>⚠️ TSP:</strong> 3x berturut-turut ≥10 → −5 poin tambahan!</p>
+    <p style="color:#9b59b6;"><strong>🤖 CICI & JENI</strong> = Ikut pilih otomatis bersamamu</p>
+  </div>
+
+  <div class="players-box">
+    <h2>👥 PEMAIN</h2>
+    <ul class="player-list" id="playerList"></ul>
+  </div>
+
+  <div class="main-buttons">
+    <button id="addPlayerBtn">➕ BUAT PEMAIN BARU</button>
+    <button id="goPlayBtn" disabled>▶ MULAI PERMAINAN</button>
+  </div>
+</div>
+
+<!-- HALAMAN 2 — GAME -->
+<div class="page" id="pageGame">
+  <h1><span>♠♥</span> 8 STROKE <span>♦♣</span></h1>
+
+  <div class="top-bar">
+    <button id="backBtn">← KEMBALI</button>
+    <button id="soundBtn">🔊 SUARA ON</button>
+    <button id="restartBtn">🔄 ULANG</button>
+  </div>
+
+  <div class="fireworks" id="fireworks"></div>
+  <div class="turn-info" id="turnInfo">Ronde 1/8 — Siap Pilih!</div>
+  <div class="tsp-warning" id="tspWarning">⚠️ Streak 2! Sekali lagi ≥10 = −5!</div>
+  <div class="result-banner" id="resultBanner"></div>
+
+  <div class="main-wrap">
+    <div class="left-col">
+      <div id="playerAreas"></div>
+    </div>
+    <div class="right-col">
+      <div class="scoreboard">
+        <h3>📊 PAPAN SKOR</h3>
+        <div id="scoreRows"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === BAWAH: PILIH KARTU + TOMBOL === -->
+  <div class="bottom-section">
+    <div class="choose-card-area" id="chooseCardArea">
+      <h4 id="chooseTitle">👆 PILIH 1 KARTU!</h4>
+      <div class="choose-cards-wrap" id="chooseCardsWrap"></div>
+    </div>
+
+    <div class="bottom-buttons">
+      <button id="stopBtn" disabled>🔒 STOP — Kunci Skor</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NAMA -->
+<div class="name-modal" id="nameModal">
+  <div class="name-content">
+    <h3>✏️ NAMA PEMAIN BARU</h3>
+    <input type="text" id="nameInput" placeholder="Tulis namamu..." maxlength="12" autocomplete="off">
+    <div class="name-btns">
+      <button class="cancelName" id="cancelName">BATAL</button>
+      <button class="saveName" id="saveName">SIAP ✅</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === DATA AWAL ===
+const aiList = [ {name: 'CICI', isAI: true}, {name: 'JENI', isAI: true} ];
+const maxPlayers = 4;
+const suits = ['♠','♦','♣','♥'];
+const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const valMap = {'A':14,'J':11,'Q':12,'K':13,'JOKER':15};
+const penalty = [0,0,-2,-3,-4,-5,-6,-7,-8];
+const MAX_ROUNDS = 8;
+
+let players = [];
+let deck = [];
+let round = 0;
+let gameRunning = false;
+let isChoosing = false;
+
+// === SUARA ===
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null, soundEnabled = true;
+function initAudio(){ if(!audioCtx) audioCtx = new AudioCtx(); }
+function playTone(freq, dur, type='sine', vol=0.3){
+  if(!soundEnabled||!audioCtx) return;
+  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.frequency.value = freq; osc.type = type;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+dur);
+  osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+dur);
+}
+function soundClick(){ playTone(600,0.06,'sine',0.25); }
+function soundCardFlip(){ playTone(520,0.08); setTimeout(()=>playTone(700,0.10),80); }
+function soundScoreUp(){ playTone(440,0.08); setTimeout(()=>playTone(554,0.08),100); setTimeout(()=>playTone(659,0.12),200); }
+function soundWarning(){ playTone(220,0.15,'sawtooth',0.25); setTimeout(()=>playTone(180,0.20,'sawtooth',0.25),150); }
+function soundTSP(){ playTone(150,0.20,'triangle',0.3); setTimeout(()=>playTone(120,0.30,'sawtooth',0.3),200); }
+function soundJoker(){ [392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.15,'sine',0.3),i*80)); }
+function soundWinHuman(){ [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>playTone(f,0.35,'sine',0.3),i*120)); }
+function soundLoseHuman(){ [320,260,220,196].forEach((f,i)=>setTimeout(()=>playTone(f,0.4,'triangle',0.25),i*180)); }
+function soundWinAI(){ [440,523,659].forEach((f,i)=>setTimeout(()=>playTone(f,0.25,'square',0.15),i*150)); }
+
+// === PENYIMPANAN ===
+function getSavedHumanNames(){ return []; }
+function saveHumanNames(){
+  const humans = players.filter(p=>!p.isAI).map(p=>p.name);
+  localStorage.setItem('8stroke_humans', JSON.stringify(humans));
+}
+
+// === LOBBY ===
+function initLobbyPlayers(){
+  players = [];
+  aiList.forEach(ai=> players.push({name: ai.name, isAI: true}));
+  renderPlayerList(); checkPlayButton();
+}
+function renderPlayerList(){
+  const list = document.getElementById('playerList'); list.innerHTML = '';
+  players.forEach((p, idx)=>{
+    const li = document.createElement('li');
+    li.className = p.isAI ? 'ai' : 'human';
+    li.innerHTML = `<span><strong>${p.name}</strong> ${p.isAI?'<span class="ai-badge">🤖 AI</span>':''}</span>
+      ${!p.isAI?`<button class="remove-btn" data-idx="${idx}">❌</button>`:''}`;
+    list.appendChild(li);
+  });
+  document.querySelectorAll('.remove-btn').forEach(btn=>{
+    btn.onclick = (e)=>{
+      soundClick(); const idx = parseInt(e.target.dataset.idx);
+      if(confirm(`Hapus "${players[idx].name}"?`)){
+        players.splice(idx,1); saveHumanNames(); renderPlayerList(); checkPlayButton();
+      }
+    };
+  });
+}
+function checkPlayButton(){
+  document.getElementById('goPlayBtn').disabled = !players.some(p=>!p.isAI);
+}
+function addPlayer(name){
+  if(players.length >= maxPlayers) return false;
+  players.push({name, isAI: false}); saveHumanNames(); renderPlayerList(); checkPlayButton();
+  return true;
+}
+function showPage(pageId){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+}
+
+// === GAME INIT ===
+function initGamePlayers(){
+  players = [];
+  aiList.forEach(ai=> players.push({name: ai.name, score:0, streak:0, cards:[], stopped:false, isAI:true}));
+  JSON.parse(localStorage.getItem('8stroke_humans')||'[]').forEach(name=>
+    players.push({name, score:0, streak:0, cards:[], stopped:false, isAI:false})
+  );
+}
+function makeDeck(){
+  deck = [];
+  for(let s of suits) for(let v of values) deck.push({val:v, suit:s});
+  deck.push({val:'JOKER', suit:'🃏'}); deck.push({val:'JOKER', suit:'🃏'});
+  for(let i=deck.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+}
+function drawFromDeck(){ return deck.pop(); }
+function makeCardEl(card){
+  const div = document.createElement('div');
+  if(card.val==='JOKER'){
+    div.className = 'card joker';
+    div.innerHTML = `<div class="top">J</div><div class="mid">🃏</div><div class="bot">J</div>`;
+    setTimeout(soundJoker,180);
+  } else {
+    const isRed = card.suit==='♥'||card.suit==='♦';
+    div.className = `card ${isRed?'red':'black'}`;
+    div.innerHTML = `<div class="top">${card.val}${card.suit}</div><div class="mid">${card.suit}</div><div class="bot">${card.val}${card.suit}</div>`;
+  }
+  soundCardFlip();
+  return div;
+}
+function getVal(card){ return valMap[card.val] || parseInt(card.val); }
+function applyCard(pIdx, card){
+  const p = players[pIdx];
+  p.cards.push(card);
+  const val = getVal(card);
+  let add = val + penalty[round];
+  if(val >= 10){
+    p.streak++;
+    if(p.streak === 3){ add -=5; soundTSP(); p.streak = 0; }
+  } else { p.streak = 0; }
+  p.score += add;
+  if(add > 0) soundScoreUp();
+}
+
+// === BUAT KARTU PILIHAN DENGAN ANIMASI BUKA ===
+function buildChoiceCard(cardData, idx, onClick){
+  const wrap = document.createElement('div');
+  wrap.className = 'card-choice';
+  wrap.dataset.index = idx;
+
+  // Belakang
+  const back = document.createElement('div');
+  back.className = 'card-choice-back';
+  back.textContent = '❓';
+
+  // Depan — isi kartu aslinya
+  const front = document.createElement('div');
+  if(cardData.val === 'JOKER'){
+    front.className = 'card-choice-front joker';
+    front.innerHTML = `<div class="top">J</div><div class="mid">🃏</div><div class="bot">J</div>`;
+  } else {
+    const isRed = cardData.suit === '♥' || cardData.suit === '♦';
+    front.className = `card-choice-front ${isRed?'red':'black'}`;
+    front.innerHTML = `<div class="top">${cardData.val}${cardData.suit}</div><div class="mid">${cardData.suit}</div><div class="bot">${cardData.val}${cardData.suit}</div>`;
+  }
+
+  wrap.appendChild(back);
+  wrap.appendChild(front);
+  wrap.onclick = () => onClick(idx, wrap);
+  return wrap;
+}
+
+// === PILIH KARTU ===
+function showHumanChoice(){
+  if(round >= MAX_ROUNDS || !gameRunning) return;
+  const human = players.find(p=>!p.isAI && !p.stopped);
+  if(!human) return;
+
+  isChoosing = true;
+  const area = document.getElementById('chooseCardArea');
+  document.getElementById('chooseTitle').textContent = `👆 ${human.name}, PILIH 1 KARTU! (${round+1}/${MAX_ROUNDS})`;
+  const wrap = document.getElementById('chooseCardsWrap');
+  wrap.innerHTML = '';
+
+  // Siapkan 3 kartu pilihan
+  const options = [drawFromDeck(), drawFromDeck(), drawFromDeck()];
+
+  // Buat tiap kartu pilihan
+  options.forEach((card, idx)=>{
+    const choiceCard = buildChoiceCard(card, idx, (selectedIdx, cardEl)=>{
+      if(!isChoosing) return;
+      isChoosing = false;
+      soundClick();
+
+      // Tandai terpilih & putar terbuka
+      cardEl.classList.add('selected', 'flipped');
+      // Nonaktifkan yang lain
+      document.querySelectorAll('.card-choice').forEach(el=>{
+        if(el !== cardEl) el.style.pointerEvents = 'none';
+      });
+
+      // Tunggu animasi selesai, lalu proses
+      setTimeout(()=>{
+        document.getElementById('chooseCardArea').style.display = 'none';
+
+        // Terapkan kartu yang dipilih ke pemain manusia
+        const humanIdx = players.findIndex(p=>!p.isAI && !p.stopped);
+        if(humanIdx !== -1) applyCard(humanIdx, options[selectedIdx]);
+
+        // AI pilih otomatis
+        players.forEach((p, i)=>{
+          if(p.isAI && !p.stopped) applyCard(i, drawFromDeck());
+        });
+
+        updateUI();
+        round++;
+
+        if(round >= MAX_ROUNDS || players.every(p=>p.stopped)){
+          setTimeout(endGame, 500);
+        } else {
+          setTimeout(showHumanChoice, 600);
+        }
+      }, 700); // Waktu animasi selesai
+    });
+    wrap.appendChild(choiceCard);
+  });
+  area.style.display = 'block';
+}
+
+// === STOP ===
+document.getElementById('stopBtn').onclick = ()=>{
+  initAudio(); soundClick();
+  players.forEach(p=>{ if(!p.isAI) p.stopped = true; });
+  isChoosing = false;
+  document.getElementById('chooseCardArea').style.display = 'none';
+  updateUI();
+
+  const finishRemaining = ()=>{
+    if(round >= MAX_ROUNDS){ endGame(); return; }
+    players.forEach((p, i)=>{
+      if(p.isAI && !p.stopped) applyCard(i, drawFromDeck());
+    });
+    updateUI();
+    round++;
+    setTimeout(finishRemaining, 500);
+  };
+  finishRemaining();
+};
+
+// === TAMPILAN ===
+function checkTSPWarning(){
+  const me = players.find(p=>!p.isAI && !p.stopped);
+  const w = document.getElementById('tspWarning');
+  if(me && me.streak === 2){ w.style.display='block'; soundWarning(); }
+  else w.style.display='none';
+}
+function updateScoreboard(){
+  const rows = document.getElementById('scoreRows');
+  const sorted = [...players].sort((a,b)=>b.score - a.score);
+  const leadScore = sorted[0].score;
+  rows.innerHTML = '';
+  players.forEach(p=>{
+    const isLead = p.score === leadScore;
+    const streakClass = p.streak>=3?'danger':p.streak===2?'warn':'';
+    rows.innerHTML += `
+      <div class="score-row ${isLead?'leader':''} ${!p.isAI?'human':''}">
+        <span>${isLead?'👑 ':''}${p.name}</span>
+        <span class="score-val">${p.score}</span>
+        <span class="score-streak ${streakClass}">S:${p.streak}</span>
+        ${p.stopped?'🔒':''}
+      </div>`;
+  });
+  checkTSPWarning();
+}
+function renderPlayerAreas(){
+  const cont = document.getElementById('playerAreas'); cont.innerHTML = '';
+  players.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className = `player-area ${!p.isAI?'human':'ai-area'}`;
+    div.innerHTML = `
+      <h3>${p.name} <span class="stopped-badge">${p.stopped?'🔒 STOP':''}</span></h3>
+      <div class="cards" id="p${i}Cards"></div>`;
+    cont.appendChild(div);
+  });
+}
+function updateUI(){
+  players.forEach((p,i)=>{
+    const cardsDiv = document.getElementById(`p${i}Cards`);
+    if(!cardsDiv) return;
+    cardsDiv.innerHTML = '';
+    p.cards.forEach(c=> cardsDiv.appendChild(makeCardEl(c)));
+  });
+  updateScoreboard();
+  document.getElementById('turnInfo').textContent = gameRunning
+    ? `Ronde ${round+1}/${MAX_ROUNDS} | Penalti: ${penalty[round+1]}`
+    : 'Permainan Selesai!';
+}
+function showFireworks(){
+  const c = document.getElementById('fireworks'); c.innerHTML = '';
+  ['#ffd700','#ff4444','#44ff44','#4488ff','#ff44ff'].forEach(col=>{
+    for(let i=0;i<10;i++){
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.width = p.style.height = (Math.random()*8+5)+'px';
+      p.style.left = (Math.random()*100)+'%';
+      p.style.top = (Math.random()*100)+'%';
+      p.style.background = col;
+      p.style.animationDelay = (Math.random()*0.4)+'s';
+      c.appendChild(p);
+    }
+  });
+  setTimeout(()=>c.innerHTML='',2000);
+}
+function showResult(winner){
+  const banner = document.getElementById('resultBanner');
+  const humans = players.filter(p=>!p.isAI);
+  const myBest = humans.length?humans.reduce((a,b)=>a.score>=b.score?a:b):null;
+  banner.style.display='block'; banner.className='result-banner';
+  if(myBest && myBest.name === winner.name){
+    banner.classList.add('win');
+    banner.innerHTML = `🎉🏆 SELAMAT ${winner.name}! KAMU MENANG! 🏆🎉<br><small>Skor: ${winner.score}</small>`;
+    soundWinHuman(); showFireworks();
+  } else if(myBest){
+    banner.classList.add('lose');
+    banner.innerHTML = `😞 ${winner.name} menang...<br>Kamu: ${myBest.score} | Pemenang: ${winner.score}<br>Ayo coba lagi! 💪`;
+    soundLoseHuman();
+  } else {
+    banner.innerHTML = `🤖 ${winner.name} menang! Skor: ${winner.score}`;
+    soundWinAI();
+  }
+}
+function endGame(){
+  gameRunning = false; isChoosing = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('chooseCardArea').style.display = 'none';
+  showResult(players.reduce((a,b)=>a.score>=b.score?a:b));
+}
+
+// === MULAI GAME ===
+function startGame(){
+  initAudio(); initGamePlayers(); makeDeck();
+  round = 0; gameRunning = true; isChoosing = false;
+  renderPlayerAreas(); updateUI();
+  document.getElementById('resultBanner').style.display = 'none';
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('tspWarning').style.display = 'none';
+  document.getElementById('chooseCardArea').style.display = 'none';
+  setTimeout(showHumanChoice, 600);
+}
+
+// === KONTROL TOMBOL ===
+document.getElementById('addPlayerBtn').onclick = ()=>{
+  soundClick(); document.getElementById('nameInput').value='';
+  document.getElementById('nameModal').style.display='flex';
+};
+document.getElementById('saveName').onclick = ()=>{
+  soundClick();
+  const name = document.getElementById('nameInput').value.trim() || 'Pemain';
+  if(!addPlayer(name)) alert('Maksimal 4 pemain!');
+  document.getElementById('nameModal').style.display='none';
+};
+document.getElementById('cancelName').onclick = ()=>{
+  soundClick(); document.getElementById('nameModal').style.display='none';
+};
+document.getElementById('nameModal').onclick = e=>{
+  if(e.target === document.getElementById('nameModal')) document.getElementById('nameModal').style.display='none';
+};
+document.getElementById('goPlayBtn').onclick = ()=>{
+  soundClick(); showPage('pageGame'); startGame();
+};
+document.getElementById('backBtn').onclick = ()=>{
+  soundClick(); gameRunning = false; isChoosing = false;
+  showPage('pageLobby'); initLobbyPlayers();
+};
+document.getElementById('soundBtn').onclick = ()=>{
+  initAudio(); soundEnabled = !soundEnabled;
+  document.getElementById('soundBtn').textContent = soundEnabled?'🔊 SUARA ON':'🔇 SUARA OFF';
+  if(soundEnabled) soundClick();
+};
+document.getElementById('restartBtn').onclick = ()=>{ soundClick(); startGame(); };
+
+// === MULAI APLIKASI ===
+initLobbyPlayers();
+</script>
+</body>
+</html>
+
